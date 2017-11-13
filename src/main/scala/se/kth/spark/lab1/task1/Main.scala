@@ -18,7 +18,7 @@ object Main {
     import sqlContext._
 
     val filePath = "src/main/resources/millionsong.txt"
-    val rawDF = ???
+    val rawDF = 3
 
     val rdd = sc.textFile(filePath)
 
