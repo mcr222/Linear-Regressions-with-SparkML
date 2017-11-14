@@ -26,6 +26,8 @@ object Main {
         new URL("https://s3.amazonaws.com/apache-zeppelin/tutorial/bank/bank.csv"),
         "utf8").split("\n"))
 
+        bankText.take(5).foreach(println)
+        
     val bank = bankText.map(s => s.split(";")).filter(s => s(0) != "\"age\"").map(
       s => Bank(s(0).toInt,
         s(1).replaceAll("\"", ""),
