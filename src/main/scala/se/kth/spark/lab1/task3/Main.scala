@@ -53,7 +53,7 @@ object Main {
      // Linear regression related transformations ------------------------
     val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(0.9).setMaxIter(50).setLabelCol("label_shifted").setFeaturesCol("features")
     val pipeline = new Pipeline().setStages(Array(regexTokenizer, arr2Vect, lSlicer, v2d, lShifter, fSlicer, myLR))
-   
+    
     //Split data into training and test
     val splits = obsDF.randomSplit(Array(0.8, 0.2))
     val train = splits(0).cache()
