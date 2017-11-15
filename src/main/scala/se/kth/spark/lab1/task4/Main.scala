@@ -66,26 +66,30 @@ object Main {
     
     val evaluator = new RegressionEvaluator
     
+    //Split data into training and test
+    val splits = obsDF.randomSplit(Array(0.8, 0.2))
+    val train = splits(0).cache()
+    val test = splits(1).cache()
+    
     //Cross validation
     val cvModel: CrossValidator = new CrossValidator()
     .setEstimator(pipeline)
     .setEvaluator(evaluator)
     .setEstimatorParamMaps(paramGrid)
     .setNumFolds(8)
-        
-    
-    //val lrModel = cvModel.bestModel.asInstanceOf[PipelineModel].stages(lrStage).asInstanceOf[LinearRegressionModel]
 
-    
-    
-    //Split data into training and test
-    val splits = obsDF.randomSplit(Array(0.8, 0.2))
-    val train = splits(0).cache()
-    val test = splits(1).cache()
-    
-    
+    val c = cvModel.fit(train)
+    val lrModel = c.bestModel.asInstanceOf[PipelineModel].stages(6).asInstanceOf[LinearRegressionModel]
    
     //print rmse of our model
+   val trainingSummary = lrModel.summary
+   Predef println(
+       "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
+       "\n Mean squared error " + trainingSummary.meanSquaredError + 
+       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
+   
     //do prediction - print first k
+    val result = c.transform(test)
+    result.show(10)
   }
 }
