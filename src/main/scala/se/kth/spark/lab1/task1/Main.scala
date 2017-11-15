@@ -29,12 +29,13 @@ object Main {
     //Delimiter: ","
     //Number of features:13
     //Data type: double
-    //rdd.take(5).foreach(println)
+    rdd.take(5).foreach(println)
+    
     
     
     //Step2: split each row into an array of features
     val recordsRdd = rdd.map(x => x.split(","))
-    
+    //recordsRdd.take(5).foreach((x => x.foreach(println)))
 
     //Step3: map each row into a Song object by using the year label and the first three features  
     val songsRdd = recordsRdd.map(s=> Song(s(0).toDouble.toInt, s(1).toDouble, s(2).toDouble, s(3).toDouble))
@@ -76,7 +77,11 @@ object Main {
    //4. Number of songs per year between 2000 and 2010
    //RDD Function
    val x4 = songsRdd.filter(x => x.year>=2000 && x.year<=2010 ).map(x => (x.year, 1)).reduceByKey(_ + _)
+   
+   //can just use x4.foreach(println)
    x4.take(11).foreach(println)
+   //alternative:
+   //    println(songsRdd.filter(song => song.year>=2000 && song.year<=2010).map(_.year).countByValue())
    
    //SQL
    sqlContext.sql("select year, count(*) as numberSongs from song where year between 2000 and 2010 group by year").show()
