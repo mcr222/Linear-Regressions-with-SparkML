@@ -1,0 +1,19 @@
+ 
+MyLinearRegressionImpl
+
+PredictOne:  //TODO Uso weights como llega. En el documento dice que hay que transponerlo, pero como no he podido probar,
+     //no sé en qué formato llega y pareciera que llega ya listo para hacer el producto punto. Hay que revisar
+    
+
+Gradient://TODO Es la unica función que falta! 
+
+Main: 
+   //TODO Validar que esta es la forma correcta de inicializar nuestro linear regression
+     val myLR = new MyLinearRegressionImpl()
+
+
+//TODO En vez de pipeline.fit, supongo que tenemos que llamar nuestra función. 
+    //No se si llamamos nuestra función luego no vamos a generar todo el pipeline, o si tenemos que llamar nuestra función despues de llamar 
+    //el pipeline
+ //TODO Obtener los resultados de nuestra solución e imprimir error. 
+
