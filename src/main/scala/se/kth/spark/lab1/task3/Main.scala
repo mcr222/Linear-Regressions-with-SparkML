@@ -96,5 +96,6 @@ object Main {
     //do prediction - print first k
     val result = pipelineModel.transform(test)
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
+  
   }
 }
