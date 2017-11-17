@@ -18,19 +18,21 @@ case class Instance(label: Double, features: Vector)
 
 object Helper {
   def rmse(labelsAndPreds: RDD[(Double, Double)]): Double = {
-    Math.sqrt((labelsAndPreds.map{case(x,y) => (x-y)*(x-y)}.sum)/labelsAndPreds.count())
+    val error = scala.math.sqrt((labelsAndPreds.map{case(x,y) => (x-y)*(x-y)}.sum)/labelsAndPreds.count())
+//    println("Computing rmse")
+//    labelsAndPreds.foreach(println)
+//    println(error)
+    error
   }
 
   def predictOne(weights: Vector, features: Vector): Double = {
-    
-      //TODO Uso weights como llega. En el documento dice que hay que transponerlo, pero como no he podido probar,
-     //no sé en qué formato llega y pareciera que llega ya listo para hacer el producto punto. Hay que revisar
-    
-      VectorHelper.dot(weights,features ) 
+      VectorHelper.dot(weights,features)
   }
 
   def predict(weights: Vector, data: RDD[Instance]): RDD[(Double, Double)] = {
-       data.map(f => (f.label,predictOne(weights, f.features)))
+       val pred = data.map(f => (f.label,predictOne(weights, f.features)))
+//       pred.foreach(println)
+       pred
   }
 }
 
@@ -42,15 +44,11 @@ class MyLinearRegressionImpl(override val uid: String)
   override def copy(extra: ParamMap): MyLinearRegressionImpl = defaultCopy(extra)
 
   def gradientSummand(weights: Vector, lp: Instance): Vector = {
-    
     VectorHelper.dot(lp.features,(VectorHelper.dot(weights, lp.features) - lp.label))
   }
 
   def gradient(d: RDD[Instance], weights: Vector): Vector = {
-    //TODO Es la unica función que falta! 
-    
-    //d.map(x=> gradientSummand(weights, x)).re
-    ???
+    d.map(x=> gradientSummand(weights, x)).reduce((v1,v2) => VectorHelper.sum(v1, v2))
   }
 
   def linregGradientDescent(trainData: RDD[Instance], numIters: Int): (Vector, Array[Double]) = {
@@ -62,6 +60,7 @@ class MyLinearRegressionImpl(override val uid: String)
     val errorTrain = Array.fill[Double](numIters)(0.0)
 
     for (i <- 0 until numIters) {
+      println("Iteration: " + i)
       //compute this iterations set of predictions based on our current weights
       val labelsAndPredsTrain = Helper.predict(weights, trainData)
       //compute this iteration's RMSE
@@ -79,13 +78,22 @@ class MyLinearRegressionImpl(override val uid: String)
   }
 
   def train(dataset: Dataset[_]): MyLinearModelImpl = {
+    //Train a model using the given dataset and parameters. 
+    //Developers can implement this instead of fit() to avoid 
+    //dealing with schema validation and copying parameters into the model. 
     println("Training")
 
     val numIters = 100
-
+    println("Reading columns:")
+    println($(labelCol))
+    println($(featuresCol))
     val instances: RDD[Instance] = dataset.select(
       col($(labelCol)), col($(featuresCol))).rdd.map {
         case Row(label: Double, features: Vector) =>
+//          if(label==0) {
+//            println(label)
+//            println(features)
+//          }
           Instance(label, features)
       }
 

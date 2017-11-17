@@ -9,11 +9,17 @@ import org.apache.spark.ml.linalg.VectorUDT
 import org.apache.spark.ml.feature.RegexTokenizer
 import org.apache.spark.ml.feature.VectorSlicer
 import org.apache.spark.ml.linalg.Vector
+import org.apache.spark.ml.linalg.Vectors
 import se.kth.spark.lab1._
 import org.apache.spark.sql.types.DoubleType
 
 object Main {
   def main(args: Array[String]) {
+//    val v = VectorHelper.dot(Vectors.dense(2,0,1), Vectors.dense(1,2,3))
+//    val d = -0.5
+//    val v = VectorHelper.dot(Vectors.dense(2,0,1), d)
+//    println(v)
+    
     val conf = new SparkConf().setAppName("lab1").setMaster("local")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
@@ -31,15 +37,15 @@ object Main {
       .setPattern(",")
       
      val arr2Vect = new Array2Vector()
-    .setInputCol("tokens")
-     .setOutputCol("tokens_vector")
+        .setInputCol("tokens")
+        .setOutputCol("tokens_vector")
      
      val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
     lSlicer.setIndices(Array(0))
 
      val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
 
-     val min_year = 1921 //Change to the real one!!
+     val min_year = 1922 
      val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
      
      
@@ -50,8 +56,9 @@ object Main {
      // Linear regression related transformations ------------------------
     //val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(0.9).setMaxIter(50).setLabelCol("label_shifted").setFeaturesCol("features")
    
-     //TODO Validar que esta es la forma correcta de inicializar nuestro linear regression
      val myLR = new MyLinearRegressionImpl()
+        .setLabelCol("label_shifted")
+        .setFeaturesCol("features")
     
      val pipeline = new Pipeline().setStages(Array(regexTokenizer, arr2Vect, lSlicer, v2d, lShifter, fSlicer, myLR))
     
@@ -60,20 +67,20 @@ object Main {
     val train = splits(0).cache()
     val test = splits(1).cache()
     
+    //this will show 6 rows of data, but not transformed
+    //since this will be done after going through the pipeline
     train.show(6)
     val lrStage = 6
     
-    //TODO En vez de pipeline.fit, supongo que tenemos que llamar nuestra función. 
-    //No se si llamamos nuestra función luego no vamos a generar todo el pipeline, o si tenemos que llamar nuestra función despues de llamar 
-    //el pipeline
     val pipelineModel: PipelineModel = pipeline.fit(train)
     val myLRModel = pipelineModel.stages(lrStage).asInstanceOf[MyLinearModelImpl]
   
+    println("Final rmse: " + myLRModel.trainingError(99))
+//    println("All rmse:")
+//    myLRModel.trainingError.foreach(println)
+
+    //TODO: print rmse of validation set!!
     
-    //TODO Obtener los resultados de nuestra solución e imprimir error. 
-    
-    //print rmse of our model
-//   val rmse = myLRModel.
 //   Predef println(
 //       "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
 //       "\n Mean squared error " + trainingSummary.meanSquaredError + 
