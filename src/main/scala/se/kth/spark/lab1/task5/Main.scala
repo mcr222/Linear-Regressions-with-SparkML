@@ -41,21 +41,23 @@ object Main {
      .setOutputCol("tokens_vector")
      
      val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
-    lSlicer.setIndices(Array(0))
+     lSlicer.setIndices(Array(0))
 
      val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
 
-     val min_year = 1921 //Change to the real one!!
+     val min_year = 1922 //TODO: is there a more elegant way to do this?
      val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
      
      
      val fSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("features")
      fSlicer.setIndices(Array(1,2,3))
     
+     //Note that polyfeatures will include all features (3) and all combinations of 2nd degree
+     //(6 additional features)
      val polynomialExpansionT = new PolynomialExpansion()
-    .setInputCol("features")
-    .setOutputCol("polyfeatures")
-    .setDegree(2) 
+        .setInputCol("features")
+        .setOutputCol("polyfeatures")
+        .setDegree(2) 
     
      val myLR = new LinearRegression().setElasticNetParam(0.1).setLabelCol("label_shifted").setFeaturesCol("polyfeatures")
    
@@ -66,9 +68,9 @@ object Main {
     //Hyperparameter related operations
     //Build the parameter grid
     val paramGrid = new ParamGridBuilder()
-    .addGrid( myLR.maxIter, Array(20,30,40,60,70,80))
-    .addGrid(myLR.regParam, Array(0.4, 0.6, 0.8, 0.92, 0.95, 1.0))
-    .build()
+      .addGrid(myLR.maxIter, Array(20, 30, 40, 50, 60, 70, 80))
+      .addGrid(myLR.regParam, Array(0.4, 0.6, 0.8, 0.9, 1.0, 1.2, 1.4))
+      .build()
     
     
     val evaluator = new RegressionEvaluator
@@ -80,10 +82,10 @@ object Main {
     
     //Cross validation
     val cvModel: CrossValidator = new CrossValidator()
-    .setEstimator(pipeline)
-    .setEvaluator(evaluator)
-    .setEstimatorParamMaps(paramGrid)
-    .setNumFolds(3)
+        .setEstimator(pipeline)
+        .setEvaluator(evaluator)
+        .setEstimatorParamMaps(paramGrid)
+        .setNumFolds(3)
 
     val c = cvModel.fit(train)
     val lrModel = c.bestModel.asInstanceOf[PipelineModel].stages(7).asInstanceOf[LinearRegressionModel]
@@ -97,6 +99,6 @@ object Main {
    
     //do prediction - print first k
     val result = c.transform(test)
-    result.show(10)
+    result.drop("value", "tokens", "tokens_vector", "year").show(10)
   }
 }
