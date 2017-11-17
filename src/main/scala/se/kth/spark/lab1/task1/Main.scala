@@ -60,8 +60,9 @@ object Main {
    val x2=songsRdd.filter(x => x.year>=1998 && x.year<=2000 ).count()
    Predef println("Number of songs between 1998 and 2000: " + x2)
     //SQL
+  
    sqlContext.sql("select count(*) from song where year>=1998 and year<=2000").show()
-   
+    
    
    //3. Max, min and mean value of year column
    //RDD function
