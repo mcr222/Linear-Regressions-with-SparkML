@@ -9,6 +9,8 @@ import org.apache.spark.ml.PipelineModel
 import org.apache.commons.io.IOUtils
 import java.net.URL
 import java.nio.charset.Charset
+import org.apache.spark.ml.linalg.Vectors
+import java.text.Normalizer.Form
 
 case class Bank(age: Integer, job: String, marital: String, education: String, balance: Integer)
 
@@ -37,5 +39,7 @@ object Main {
     bank.registerTempTable("bank")
     bank.show(5)
     sqlContext.sql("select age, count(1) from bank where age < 70 group by age order by age").show()
+    
+      
   }
 }

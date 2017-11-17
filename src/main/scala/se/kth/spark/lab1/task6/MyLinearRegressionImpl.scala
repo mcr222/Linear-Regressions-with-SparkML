@@ -18,15 +18,18 @@ case class Instance(label: Double, features: Vector)
 
 object Helper {
   def rmse(labelsAndPreds: RDD[(Double, Double)]): Double = {
-    ???
+    Math.sqrt((labelsAndPreds.map{case(x,y) => (x-y)*(x-y)}.sum)/labelsAndPreds.count())
   }
 
   def predictOne(weights: Vector, features: Vector): Double = {
-    ???
+      //TODO Uso weights como llega. En el documento dice que hay que transponerlo, pero como no he podido probar,
+     //no sé en qué formato llega y pareciera que llega ya listo para hacer el producto punto. Hay que revisar
+    
+      VectorHelper.dot(weights,features ) 
   }
 
   def predict(weights: Vector, data: RDD[Instance]): RDD[(Double, Double)] = {
-    ???
+       data.map(f => (f.label,predictOne(weights, f.features)))
   }
 }
 
@@ -38,10 +41,14 @@ class MyLinearRegressionImpl(override val uid: String)
   override def copy(extra: ParamMap): MyLinearRegressionImpl = defaultCopy(extra)
 
   def gradientSummand(weights: Vector, lp: Instance): Vector = {
-    ???
+    
+    VectorHelper.dot(lp.features,(VectorHelper.dot(weights, lp.features) - lp.label))
   }
 
   def gradient(d: RDD[Instance], weights: Vector): Vector = {
+    //TODO Es la unica función que falta! 
+    
+    //d.map(x=> gradientSummand(weights, x)).re
     ???
   }
 
