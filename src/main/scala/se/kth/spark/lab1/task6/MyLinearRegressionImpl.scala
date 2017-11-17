@@ -22,6 +22,7 @@ object Helper {
   }
 
   def predictOne(weights: Vector, features: Vector): Double = {
+    
       //TODO Uso weights como llega. En el documento dice que hay que transponerlo, pero como no he podido probar,
      //no sé en qué formato llega y pareciera que llega ya listo para hacer el producto punto. Hay que revisar
     
