@@ -12,18 +12,28 @@ object VectorHelper {
   }
 
   def dot(v: Vector, s: Double): Vector = {
-   
+//    println("scalar mult")
+//    println(v)
+//    println(s)
     val x = Array.fill(v.size)(0d)
     for (i <- 0 to (v.size-1))
     {
-      x(i) = v(i)*2
+      x(i) = v(i)*s
     }
-    Vectors.dense(x)
+    val res = Vectors.dense(x)
+//    println(res)
+//    println("finished scalar mult")
+    res
   }
 
   def sum(v1: Vector, v2: Vector): Vector = {
-   
-    Vectors.dense((v1.toArray, v2.toArray).zipped.map(_ + _))
+//    println("summing")
+//    println(v1)
+//    println(v2)
+    val res = Vectors.dense((v1.toArray, v2.toArray).zipped.map(_ + _))
+//    println(res)
+//    println("finishedsumming")
+    res
   }
 
   def fill(size: Int, fillVal: Double): Vector = {
