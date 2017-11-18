@@ -1,7 +1,7 @@
 package se.kth.spark.lab1.bonustask
 
 import se.kth.spark.lab1._
-import ch.systemsx.cisd.hdf5
+
 import ch.systemsx.cisd.hdf5._
 import ch.systemsx.cisd.hdf5.HDF5Factory
 
@@ -13,8 +13,6 @@ import java.io.File
 import java.io.FileInputStream
 
 
-import org.apache.spark.ml.feature.RegexTokenizer
-import org.apache.spark.ml.Pipeline
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.SQLContext
