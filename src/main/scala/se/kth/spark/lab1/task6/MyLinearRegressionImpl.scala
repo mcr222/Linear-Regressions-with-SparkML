@@ -19,9 +19,6 @@ case class Instance(label: Double, features: Vector)
 object Helper {
   def rmse(labelsAndPreds: RDD[(Double, Double)]): Double = {
     val error = scala.math.sqrt((labelsAndPreds.map{case(x,y) => (x-y)*(x-y)}.sum)/labelsAndPreds.count())
-//    println("Computing rmse")
-//    labelsAndPreds.foreach(println)
-//    println(error)
     error
   }
 
@@ -31,7 +28,6 @@ object Helper {
 
   def predict(weights: Vector, data: RDD[Instance]): RDD[(Double, Double)] = {
        val pred = data.map(f => (f.label,predictOne(weights, f.features)))
-//       pred.foreach(println)
        pred
   }
 }

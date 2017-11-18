@@ -32,18 +32,24 @@ object Main {
       .setInputCol("value")
       .setOutputCol("tokens")
       .setPattern(",")
+     val reg_resp= regexTokenizer.transform(obsDF)
       
+     
      val arr2Vect = new Array2Vector()
     .setInputCol("tokens")
      .setOutputCol("tokens_vector")
      
+     
      val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
     lSlicer.setIndices(Array(0))
 
+    
      val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
-
-     val min_year = 1922
-     val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
+    
+     //In this case, we use another strategy to find the minimum. The strategy stated in task 2 forces to call the transform
+     //function to every transformation, which is not optimal as the pipeline is already calling each of them in an optimal way (DAG construction)
+     val min_year =reg_resp.map(x => x.getList(1).get(0).toString().toDouble).reduce((a,b)=> Math.min(a, b))
+     val lShifter = new DoubleUDF((x:Double) => x-min_year.toString().toDouble).setInputCol("label").setOutputCol("label_shifted")
      
      
      val fSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("features")
@@ -68,22 +74,21 @@ object Main {
  					Mean absolute error 14.194679673140822
      */    
 
-     // Linear regression related transformations ------------------------
-    val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(0.1).setMaxIter(10)
+     // Linear regression related transformations -----------------------------------------------------------------
+    val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(0.9).setMaxIter(50)
       .setLabelCol("label_shifted")
       .setFeaturesCol("features")
     val pipeline = new Pipeline().setStages(Array(regexTokenizer, arr2Vect, lSlicer, v2d, lShifter, fSlicer, myLR))
     
-    //Split data into training and test
+    //Split data into training and test. 
+    // 80% of our data will be for training and 20% will be for testing
     val splits = obsDF.randomSplit(Array(0.8, 0.2))
-    val train = splits(0).cache()
+    val train = splits(0).cache() //In case we test with big amounts of data we can remove .cache()
     val test = splits(1).cache()
     
-    train.show(6)
     
     val pipelineModel: PipelineModel = pipeline.fit(train)
-    //with this we are getting stage 6 of the pipeline (our linear regression),
-    //and casting (asInstanceOf) it to a LinearRegressionModel
+    //with this we are getting stage 6 of the pipeline (our linear regression), and casting (asInstanceOf) it to a LinearRegressionModel
     val lrModel = pipelineModel.stages(6).asInstanceOf[LinearRegressionModel]
 
     //print rmse of our model
@@ -91,10 +96,11 @@ object Main {
    Predef println(
        "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
        "\n Mean squared error " + trainingSummary.meanSquaredError + 
-       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
+       "\n Mean absolute error " + trainingSummary.meanAbsoluteError + "\n")
     
     //do prediction - print first k
     val result = pipelineModel.transform(test)
+     Predef println("Transformed data and some predictions: ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
   
   }

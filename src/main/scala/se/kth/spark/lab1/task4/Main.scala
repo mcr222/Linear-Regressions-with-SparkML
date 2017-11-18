@@ -28,22 +28,27 @@ object Main {
     val filePath = "src/main/resources/millionsong.txt"
     val obsDF: DataFrame = sc.textFile(filePath).toDF()
 
-   //Pipeline from previous task ----------------------------------------------------------
+   //Pipeline from previous task -----------------------------------------------------------------------------------
      val regexTokenizer = new RegexTokenizer()
       .setInputCol("value")
       .setOutputCol("tokens")
       .setPattern(",")
-      
+     val reg_resp= regexTokenizer.transform(obsDF)
+
+     
      val arr2Vect = new Array2Vector()
          .setInputCol("tokens")
          .setOutputCol("tokens_vector")
      
+         
      val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
     lSlicer.setIndices(Array(0))
 
+    
      val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
 
-     val min_year = 1922
+     
+     val min_year =reg_resp.map(x => x.getList(1).get(0).toString().toDouble).reduce((a,b)=> Math.min(a, b))
      val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
      
      
@@ -51,7 +56,7 @@ object Main {
      fSlicer.setIndices(Array(1,2,3))
     
      
-     // Linear regression related transformations ------------------------
+     // Linear regression related transformations --------------------------------------------------------------------------
     val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(0.9).setMaxIter(50)
         .setLabelCol("label_shifted").setFeaturesCol("features")
     val pipeline = new Pipeline().setStages(Array(regexTokenizer, arr2Vect, lSlicer, v2d, lShifter, fSlicer, myLR))
@@ -68,18 +73,18 @@ object Main {
     val evaluator = new RegressionEvaluator
     
     //Split data into training and test
+    // 80% of our data will be for training and 20% will be for testing
     val splits = obsDF.randomSplit(Array(0.8, 0.2))
-    val train = splits(0).cache()
+    val train = splits(0).cache() //In case we test with big amounts of data we can remove .cache()
     val test = splits(1).cache()
     
-    println("Cross validating all models")
+    println("Cross validating all models -------------------------------------------------------------------------")
     //Cross validation
     val cvModel: CrossValidator = new CrossValidator()
         .setEstimator(pipeline)
         .setEvaluator(evaluator)
         .setEstimatorParamMaps(paramGrid)
-        //TODO: why 8 folds?
-        .setNumFolds(8)
+        .setNumFolds(3) //For simplicity we use 3 folds, but any number can be used
     
     val c = cvModel.fit(train)
     println("Finished cross validating all models")
@@ -94,10 +99,11 @@ object Main {
     Predef println(
        "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
        "\n Mean squared error " + trainingSummary.meanSquaredError + 
-       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
+       "\n Mean absolute error " + trainingSummary.meanAbsoluteError + "\n")
    
     //do prediction - print first k
     val result = c.transform(test)
+    Predef println("Transformed data and some predictions ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
   }
 }

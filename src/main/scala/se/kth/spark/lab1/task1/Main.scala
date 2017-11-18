@@ -22,16 +22,14 @@ object Main {
 
     val filePath = "src/main/resources/millionsong.txt"
   
-
     val rdd = sc.textFile(filePath)
 
     //Step1: print the first 5 rows, what is the delimiter, number of features and the data types?
     //Delimiter: ","
     //Number of features:13
     //Data type: double
+     Predef println("First 5 rows of the dataset: ----------------------------------------------------")
     rdd.take(5).foreach(println)
-    
-    
     
     //Step2: split each row into an array of features
     val recordsRdd = rdd.map(x => x.split(","))
@@ -76,13 +74,9 @@ object Main {
    
    //4. Number of songs per year between 2000 and 2010
    //RDD Function
-   val x4 = songsRdd.filter(x => x.year>=2000 && x.year<=2010 ).map(x => (x.year, 1)).reduceByKey(_ + _)
-   
-   //can just use x4.foreach(println)
-   x4.take(11).foreach(println)
-   //alternative:
-   //    println(songsRdd.filter(song => song.year>=2000 && song.year<=2010).map(_.year).countByValue())
-   
+   val x4 = songsRdd.filter(song => song.year>=2000 && song.year<=2010).map(_.year).countByValue()
+   x4.foreach(println)
+  
    //SQL
    sqlContext.sql("select year, count(*) as numberSongs from song where year between 2000 and 2010 group by year").show()
 

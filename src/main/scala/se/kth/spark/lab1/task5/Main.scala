@@ -30,22 +30,27 @@ object Main {
     val filePath = "src/main/resources/millionsong.txt"
     val obsDF: DataFrame = sc.textFile(filePath).toDF()
 
-    //Pipeline creation -------------------------------------------------------
+    //Pipeline creation ----------------------------------------------------------------------------------------------
      val regexTokenizer = new RegexTokenizer()
       .setInputCol("value")
       .setOutputCol("tokens")
       .setPattern(",")
+     val reg_resp= regexTokenizer.transform(obsDF)
+
       
      val arr2Vect = new Array2Vector()
     .setInputCol("tokens")
      .setOutputCol("tokens_vector")
      
+     
      val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
      lSlicer.setIndices(Array(0))
 
+     
      val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
 
-     val min_year = 1922 //TODO: is there a more elegant way to do this?
+     
+     val min_year =reg_resp.map(x => x.getList(1).get(0).toString().toDouble).reduce((a,b)=> Math.min(a, b))
      val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
      
      
@@ -59,6 +64,7 @@ object Main {
         .setOutputCol("polyfeatures")
         .setDegree(2) 
     
+     
      val myLR = new LinearRegression().setElasticNetParam(0.1).setLabelCol("label_shifted").setFeaturesCol("polyfeatures")
    
      //Set the stages
@@ -77,15 +83,15 @@ object Main {
     
     //Split data into training and test
     val splits = obsDF.randomSplit(Array(0.8, 0.2))
-    val train = splits(0).cache()
-    val test = splits(1).cache()
+    val train = splits(0).cache() //In case we test with big amounts of data we can remove .cache()
+    val test = splits(1).cache() 
     
     //Cross validation
     val cvModel: CrossValidator = new CrossValidator()
         .setEstimator(pipeline)
         .setEvaluator(evaluator)
         .setEstimatorParamMaps(paramGrid)
-        .setNumFolds(3)
+        .setNumFolds(3) //For simplicity we use 3 folds, but any number can be used
 
     val c = cvModel.fit(train)
     val lrModel = c.bestModel.asInstanceOf[PipelineModel].stages(7).asInstanceOf[LinearRegressionModel]
@@ -95,10 +101,11 @@ object Main {
    Predef println(
        "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
        "\n Mean squared error " + trainingSummary.meanSquaredError + 
-       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
+       "\n Mean absolute error " + trainingSummary.meanAbsoluteError + "\n")
    
     //do prediction - print first k
     val result = c.transform(test)
+    Predef println("Transformed data and some predictions ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
   }
 }
