@@ -1,127 +1,153 @@
 package se.kth.spark.lab1.bonustask
 
-import hdf.hdf5lib.H5
-import hdf.hdf5lib.HDF5Constants
+import se.kth.spark.lab1._
 import ch.systemsx.cisd.hdf5
 import ch.systemsx.cisd.hdf5._
 import ch.systemsx.cisd.hdf5.HDF5Factory
-import ch.systemsx.cisd.hdf5.io.HDF5DataSetRandomAccessFile
-import ch.systemsx.cisd.base.io.IRandomAccessFile
-import java.io.File 
+
 import scala.util._
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.archivers.tar._
+import org.apache.commons.io.FileUtils
+import java.io.File
 import java.io.FileInputStream
-import java.io.OutputStream
-import java.io.FileOutputStream
-import org.apache.commons.io.IOUtils
 
-object HDF5 {
 
-  case class H5CDS(ds: HDF5CompoundDataMap){
-    def vector[T](colName: String): Vector[T] = ds.get(colName).asInstanceOf[Array[T]].toVector
-    def get[T](colName: String): T = ds.get(colName).asInstanceOf[T]
-  }
+import org.apache.spark.ml.feature.RegexTokenizer
+import org.apache.spark.ml.Pipeline
+import org.apache.spark.SparkConf
+import org.apache.spark.SparkContext
+import org.apache.spark.sql.SQLContext
 
-  def getCompoundDS(h5: IHDF5Reader, path: String): H5CDS = {
-    val data = h5.compound().read(path, classOf[HDF5CompoundDataMap])
-    H5CDS(data)
-  }
+import org.apache.spark._
+import org.apache.spark.ml.regression.LinearRegressionModel
+import org.apache.spark.ml.PipelineModel
+import org.apache.spark.ml.regression.LinearRegression
+import org.apache.spark.ml.Pipeline
+import org.apache.spark.ml.feature.VectorSlicer
+import org.apache.spark.ml.linalg.Vector
+import org.apache.spark.sql.types.DoubleType
 
-  def open(filename: String): Try[IHDF5Reader] = Try{HDF5FactoryProvider.get().openForReading(new File(filename))}
-
-  def close(h5: IHDF5Reader): Try[Unit] = Try{h5.close()}
-
-  // read a vector from array of vectors
-  def readArray[T](data: Vector[T], offset: Vector[Int], i: Int): Vector[T] = {
-    val j0: Int = offset(i)
-    val j1: Int = offset.lift(i+1).getOrElse(data.length)
-    data.slice(j0,j1)
-  }
-
-}
 
 object Main {
   
+  def getFeatures(reader: IHDF5Reader): Array[String] = {
+     val metadata = HDF.getCompoundDS(reader,"/metadata/songs")
+     val mb = HDF.getCompoundDS(reader,"/musicbrainz/songs")
+     val analysis = HDF.getCompoundDS(reader,"/analysis/songs")
+     
+     var features: Array[String] = Array(mb.get[Int]("year").toDouble.toString())
+     features = features :+ analysis.get[Double]("danceability").toString()
+     features = features :+ analysis.get[Double]("duration").toString()
+     features = features :+ analysis.get[Double]("end_of_fade_in").toString()
+     features = features :+ analysis.get[Double]("energy").toString()
+     features = features :+ analysis.get[Double]("key_confidence").toString()
+     features = features :+ analysis.get[Double]("loudness").toString()
+     features = features :+ analysis.get[Double]("mode_confidence").toString()
+     features = features :+ analysis.get[Double]("start_of_fade_out").toString()
+     features = features :+ analysis.get[Double]("tempo").toString()
+     features = features :+ analysis.get[Double]("time_signature_confidence").toString()
+     features = features :+ metadata.get[Double]("artist_familiarity").toString()
+     features = features :+ metadata.get[Double]("artist_hotttnesss").toString()
+     features = features :+ metadata.get[Double]("artist_latitude").toString()
+     features = features :+ metadata.get[Double]("artist_longitude").toString()
+     features = features :+ metadata.get[Double]("song_hotttnesss").toString()
+     for (i <- 0 to (features.size-1)) {
+       if(features(i) == "NaN") {
+          features(i) = "0" 
+       }
+      }
+     features
+  }
+  
   def main(args: Array[String]) {
-    println("ahaaha")
+    val conf = new SparkConf().setAppName("lab1").setMaster("local")
+    val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
+
+    import sqlContext.implicits._
+    
     val path = "/home/mcr222/Documents/EIT/KTH/Scalable Machine Learning/Linear Regressions with SparkML/vt17-lab1/src/main/resources/"
-    val test_path = path + "test.h5"
-    val reader = HDF5Factory.openForReading(test_path)
-    println(reader.getStringAttribute("metadata/songs","FIELD_1_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_2_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_3_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_4_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_5_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_6_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_7_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_8_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_9_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_10_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_11_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_12_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_13_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_14_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_15_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_16_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_17_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_18_NAME"))
-    println(reader.getStringAttribute("metadata/songs","FIELD_19_NAME"))
-//    println(reader.getStringAttribute("metadata/songs","FIELD_19_FILL"))
-    
-    
-    
-//    var mydata = reader.getAllGroupMembers("analysis")
-    var mydata = reader.getAllAttributeNames("musicbrainz/songs")
-     println(reader.getStringAttribute("musicbrainz/songs","FIELD_0_NAME"))
-      println(reader.getStringAttribute("musicbrainz/songs","FIELD_1_NAME"))
-    println(mydata)
-    
-    println("-------------")
-    println (reader.readDoubleArray("/analysis/segments_loudness_start").toVector)
-    
-    val metadata = HDF5.getCompoundDS(reader,"/metadata/songs")
-    val mb = HDF5.getCompoundDS(reader,"/musicbrainz/songs")
-    println (mb.get[Int]("year"))
-    println(metadata.get[String]("title"))
-    reader.close()
-    
-    var untaredFiles: Array[String] = Array()
-    val tar_path = path + "song-test.tar.gz" 
-    val tar = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(tar_path)))
-    var entry: TarArchiveEntry = null; 
-    entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
-    while (entry != null) {
-        var outputFile:File = new File(path, entry.getName());
-        if (entry.isDirectory()) {
-            println(String.format("Attempting to write output directory %s.", outputFile.getAbsolutePath()));
-            if (!outputFile.exists()) {
-                println(String.format("Attempting to create output directory %s.", outputFile.getAbsolutePath()));
-                if (!outputFile.mkdirs()) {
-                    throw new IllegalStateException(String.format("Couldn't create directory %s.", outputFile.getAbsolutePath()));
-                }
+ 
+    var tarFiles: Array[String] = Array()
+    val tar_path = path + "song-test.tar.gz"
+    tarFiles = tarFiles :+ tar_path
+    var allHDF5 = sc.parallelize(tarFiles).flatMap(path => {
+        val tar = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(path)))
+        var entry: TarArchiveEntry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
+        var res: List[Array[Byte]] = List()
+        while (entry != null) {
+            var outputFile:File = new File(entry.getName());
+            if (!entry.isDirectory() && entry.getName.contains(".h5")) {
+                var byteFile = Array.ofDim[Byte](entry.getSize.toInt)
+                tar.read(byteFile);
+                res = byteFile :: res
             }
-        } else {
-            println(String.format("Creating output file %s.", outputFile.getAbsolutePath()));
-            var outputFileStream: OutputStream = new FileOutputStream(outputFile); 
-            IOUtils.copy(tar, outputFileStream);
-            outputFileStream.close();
-            if(outputFile.getAbsolutePath.contains(".h5")) {
-              untaredFiles = untaredFiles :+ outputFile.getAbsolutePath
-            }
+            entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
         }
-        entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
-    }
-    println("----------")
-    untaredFiles.foreach(println)
-    //TODO: can do here parallelize and then transform each .h5 into a song array
-    //TODO: parallelize datasets A.tar.gz till Z.tar.gz
- //   var bytereader = HDF5DataSetRandomAccessFile.read()
+        res
+        
+      } ).map(bytes => {
+         FileUtils.writeByteArrayToFile(new File(bytes.toString()), bytes)
+         val reader = HDF5Factory.openForReading(bytes.toString())
+         getFeatures(reader)
+      })
+      
+      allHDF5.foreach(x => { x.foreach(y => print(y+" "))
+                            println()})
+                            
+      var obsDF = allHDF5.filter(x => x(0)!="0.0").toDF()
+      obsDF.printSchema()
+      println(obsDF.count())
+      
+      obsDF.show(3)
     
-//    var file_id = H5.H5Fcreate(test_path, HDF5Constants.H5F_ACC_TRUNC, HDF5Constants.H5P_DEFAULT,
-//                    HDF5Constants.H5P_DEFAULT);
-//    
-//    H5.H5Dread(dataset_id, HDF5Constants.H5T_NATIVE_INT, HDF5Constants.H5S_ALL, HDF5Constants.H5S_ALL,
-//                        HDF5Constants.H5P_DEFAULT, dset_data);
+      
+     val arr2Vect = new Array2Vector()
+        .setInputCol("value")
+         .setOutputCol("tokens_vector")
+     
+     val lSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("year")
+    lSlicer.setIndices(Array(0))
+
+     val v2d = new Vector2DoubleUDF((x: Vector) => x(0).toDouble).setInputCol("year").setOutputCol("label")
+
+     val min_year = 1922
+     val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
+     
+     
+     val fSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("features")
+     fSlicer.setIndices(Array(1,2,3))
+
+     // Linear regression related transformations ------------------------
+    val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(1.2).setMaxIter(20)
+      .setLabelCol("label_shifted")
+      .setFeaturesCol("features")
+    val pipeline = new Pipeline().setStages(Array(arr2Vect, lSlicer, v2d, lShifter, fSlicer, myLR))
+    
+    //Split data into training and test
+    val splits = obsDF.randomSplit(Array(0.8, 0.2))
+    val train = splits(0).cache()
+    val test = splits(1).cache()
+        
+    val pipelineModel: PipelineModel = pipeline.fit(train)
+    //with this we are getting stage 6 of the pipeline (our linear regression),
+    //and casting (asInstanceOf) it to a LinearRegressionModel
+    val lrModel = pipelineModel.stages(5).asInstanceOf[LinearRegressionModel]
+
+    //print rmse of our model
+   val trainingSummary = lrModel.summary
+   Predef println(
+       "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
+       "\n Mean squared error " + trainingSummary.meanSquaredError + 
+       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
+    
+    //do prediction - print first k
+    val result = pipelineModel.transform(test)
+    result.drop("value", "tokens", "tokens_vector", "year").show(10)
+  
   }
 }
+
+
+
