@@ -27,7 +27,14 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.types.DoubleType
 import org.apache.spark.ml.evaluation.RegressionEvaluator
 
-
+/** IMPORTANT
+ *  Also includes bonus task in new package bonustask. Bonus task is ready 
+ *  to be run locally (need to change folder path to point where all tar.gz 
+ *  file with .h5 files are). The execution is reduced so it can be run fast 
+ *  (limits songs read from files and only 4 features are taken). See all TODOs 
+ *  in bonustask.Main to see all what to change to run fully.
+ * 
+ */
 
 object Main {
   
@@ -67,12 +74,14 @@ object Main {
   }
   
   def main(args: Array[String]) {
+    //TODO: remove .setMaster() to run on cluster (hops.site)
     val conf = new SparkConf().setAppName("lab1").setMaster("local")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
 
     import sqlContext.implicits._
     
+    //TODO: change your folder path
     //val path = "/demo_spark_marccr01/labs::million_song/"
     val path = "/home/mcr222/Downloads/"
     //in order for this to work the file millionsongsubset should be added
@@ -90,6 +99,7 @@ object Main {
     var tarFiles: Array[String] = Array()
     val tar_path = path + "millionsongsubset.tar.gz"
     
+    //TODO: add all your tar.gz files in main folder path to tarFiles array
     //should add here as many tar.gz files as wanted containing the
     //hdf5 files for the songs
     tarFiles = tarFiles :+ tar_path
@@ -106,6 +116,7 @@ object Main {
         var entry: TarArchiveEntry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
         var res: List[Array[Byte]] = List()
         var i = 0
+        //TODO: remove condition i<101 to read completely all files
         while (entry != null && i<101) {
             var outputFile:File = new File(entry.getName());
             if (!entry.isDirectory() && entry.getName.contains(".h5")) {
@@ -162,6 +173,7 @@ object Main {
      
      //For testing purposes this is kept in the pipeline, but it can be removed in order
      //to take into account all features of each song
+     //TODO: remove or add as many columns as wanted in features, there are 14 features
      val fSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("features")
      fSlicer.setIndices(Array(1,2,3,4,5))
 
