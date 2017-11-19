@@ -12,6 +12,7 @@ import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.ml.linalg.Vectors
 import se.kth.spark.lab1._
 import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.ml.evaluation.RegressionEvaluator
 
 object Main {
   def main(args: Array[String]) {
@@ -75,19 +76,18 @@ object Main {
     val myLRModel = pipelineModel.stages(lrStage).asInstanceOf[MyLinearModelImpl]
   
     println("Final rmse: " + myLRModel.trainingError(99) + "\n")
-    
-    //TODO: print rmse of validation set!!
-    
-//   Predef println(
-//       "Root mean squared error:" + trainingSummary.rootMeanSquaredError +
-//       "\n Mean squared error " + trainingSummary.meanSquaredError + 
-//       "\n Mean absolute error " + trainingSummary.meanAbsoluteError)
-    
+        
     //do prediction - print first k
     Predef println("Transformed data and some predictions ---------------------------------------------------------------------")
     val result = pipelineModel.transform(test)
     result.show(4)
-  
+    
+    val eval = new RegressionEvaluator()
+      .setMetricName("rmse")
+      .setLabelCol("label_shifted")
+      .setPredictionCol("prediction")
+    val rmse = eval.evaluate(result)
+    println(s"Root-mean-square error on validation data = $rmse")
    
   }
 }

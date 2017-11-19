@@ -9,24 +9,32 @@ import org.apache.spark.ml.PipelineModel
 import org.apache.commons.io.IOUtils
 import java.net.URL
 import java.nio.charset.Charset
-import org.apache.spark.ml.linalg.Vectors
-import java.text.Normalizer.Form
 
 case class Bank(age: Integer, job: String, marital: String, education: String, balance: Integer)
 
 object Main {
   def main(args: Array[String]) {
-    val conf = new SparkConf().setAppName("lab1").setMaster("local")
+    val conf = new SparkConf().setAppName("lab1")//.setMaster("local")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
 
     import sqlContext.implicits._
     import sqlContext._
 
-    val bankText = sc.parallelize(
-      IOUtils.toString(
-        new URL("https://s3.amazonaws.com/apache-zeppelin/tutorial/bank/bank.csv"),
-        "utf8").split("\n"))
+    
+    var data: Array[String] = Array()
+    data = data :+ "\"age\";\"job\";\"marital\";\"education\";\"default\";\"balance\";\"housing\";\"loan\";\"contact\";\"day\";\"month\";\"duration\";\"campaign\";\"pdays\";\"previous\";\"poutcome\";\"y\""
+    data = data :+ "30;\"unemployed\";\"married\";\"primary\";\"no\";1787;\"no\";\"no\";\"cellular\";19;\"oct\";79;1;-1;0;\"unknown\";\"no\""
+    data = data :+ "33;\"services\";\"married\";\"secondary\";\"no\";4789;\"yes\";\"yes\";\"cellular\";11;\"may\";220;1;339;4;\"failure\";\"no\""
+    data = data :+ "35;\"management\";\"single\";\"tertiary\";\"no\";1350;\"yes\";\"no\";\"cellular\";16;\"apr\";185;1;330;1;\"failure\";\"no\""
+    data = data :+ "30;\"management\";\"married\";\"tertiary\";\"no\";1476;\"yes\";\"yes\";\"unknown\";3;\"jun\";199;4;-1;0;\"unknown\";\"no\""
+    data = data :+ "59;\"blue-collar\";\"married\";\"secondary\";\"no\";0;\"yes\";\"no\";\"unknown\";5;\"may\";226;1;-1;0;\"unknown\";\"no\""
+    data = data :+ "35;\"management\";\"single\";\"tertiary\";\"no\";747;\"no\";\"no\";\"cellular\";23;\"feb\";141;2;176;3;\"failure\";\"no\""
+    data = data :+ "36;\"self-employed\";\"married\";\"tertiary\";\"no\";307;\"yes\";\"no\";\"cellular\";14;\"may\";341;1;330;2;\"other\";\"no\""
+    data = data :+ "39;\"technician\";\"married\";\"secondary\";\"no\";147;\"yes\";\"no\";\"cellular\";6;\"may\";151;2;-1;0;\"unknown\";\"no\""
+    data = data :+ "41;\"entrepreneur\";\"married\";\"tertiary\";\"no\";221;\"yes\";\"no\";\"unknown\";14;\"may\";57;2;-1;0;\"unknown\";\"no\""
+    
+    val bankText = sc.parallelize(data)
 
         bankText.take(5).foreach(println)
         
