@@ -107,5 +107,12 @@ object Main {
     val result = c.transform(test)
     Predef println("Transformed data and some predictions ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
+    
+    val eval = new RegressionEvaluator()
+      .setMetricName("rmse")
+      .setLabelCol("label_shifted")
+      .setPredictionCol("prediction")
+    val rmse = eval.evaluate(result)
+    println(s"Root-mean-square error on validation data = $rmse")
   }
 }

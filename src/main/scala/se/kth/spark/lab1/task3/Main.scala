@@ -12,7 +12,7 @@ import org.apache.spark.ml.feature.VectorSlicer
 import org.apache.spark.ml.linalg.Vector
 import se.kth.spark.lab1._
 import org.apache.spark.sql.types.DoubleType
-
+import org.apache.spark.ml.evaluation.RegressionEvaluator
 
 
 object Main {
@@ -49,6 +49,9 @@ object Main {
      //In this case, we use another strategy to find the minimum. The strategy stated in task 2 forces to call the transform
      //function to every transformation, which is not optimal as the pipeline is already calling each of them in an optimal way (DAG construction)
      val min_year =reg_resp.map(x => x.getList(1).get(0).toString().toDouble).reduce((a,b)=> Math.min(a, b))
+     
+     //To be more efficient we can just hardcode the minimum year
+     //val min_year = 1922
      val lShifter = new DoubleUDF((x:Double) => x-min_year.toString().toDouble).setInputCol("label").setOutputCol("label_shifted")
      
      
@@ -100,8 +103,16 @@ object Main {
     
     //do prediction - print first k
     val result = pipelineModel.transform(test)
+    
      Predef println("Transformed data and some predictions: ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
+    
+    val evaluator = new RegressionEvaluator()
+      .setMetricName("rmse")
+      .setLabelCol("label_shifted")
+      .setPredictionCol("prediction")
+    val rmse = evaluator.evaluate(result)
+    println(s"Root-mean-square error on validation data = $rmse")
   
   }
 }

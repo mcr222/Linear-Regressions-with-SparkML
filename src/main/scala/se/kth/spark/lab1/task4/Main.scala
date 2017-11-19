@@ -86,6 +86,7 @@ object Main {
         .setEstimatorParamMaps(paramGrid)
         .setNumFolds(3) //For simplicity we use 3 folds, but any number can be used
     
+    //Make predictions on test documents. cvModel uses the best model found (lrModel).
     val c = cvModel.fit(train)
     println("Finished cross validating all models")
     
@@ -105,5 +106,12 @@ object Main {
     val result = c.transform(test)
     Predef println("Transformed data and some predictions ---------------------------------------------------------------------")
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
+    
+    val eval = new RegressionEvaluator()
+      .setMetricName("rmse")
+      .setLabelCol("label_shifted")
+      .setPredictionCol("prediction")
+    val rmse = eval.evaluate(result)
+    println(s"Root-mean-square error on validation data = $rmse")
   }
 }

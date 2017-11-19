@@ -16,15 +16,4 @@ object HDF {
     H5CDS(data)
   }
 
-  def open(filename: String): Try[IHDF5Reader] = Try{HDF5FactoryProvider.get().openForReading(new File(filename))}
-
-  def close(h5: IHDF5Reader): Try[Unit] = Try{h5.close()}
-
-  // read a vector from array of vectors
-  def readArray[T](data: Vector[T], offset: Vector[Int], i: Int): Vector[T] = {
-    val j0: Int = offset(i)
-    val j1: Int = offset.lift(i+1).getOrElse(data.length)
-    data.slice(j0,j1)
-  }
-
 }

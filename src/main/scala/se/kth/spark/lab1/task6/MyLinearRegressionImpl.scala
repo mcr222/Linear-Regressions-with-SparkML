@@ -56,7 +56,9 @@ class MyLinearRegressionImpl(override val uid: String)
     val errorTrain = Array.fill[Double](numIters)(0.0)
 
     for (i <- 0 until numIters) {
-      println("Iteration: " + i)
+      if(i%20==0) {
+        println("Training iteration: " + i)
+      }
       //compute this iterations set of predictions based on our current weights
       val labelsAndPredsTrain = Helper.predict(weights, trainData)
       //compute this iteration's RMSE
@@ -104,7 +106,6 @@ class MyLinearModelImpl(override val uid: String, val weights: Vector, val train
   override def copy(extra: ParamMap): MyLinearModelImpl = defaultCopy(extra)
 
   def predict(features: Vector): Double = {
-    println("Predicting")
     val prediction = Helper.predictOne(weights, features)
     prediction
   }

@@ -25,15 +25,23 @@ import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.VectorSlicer
 import org.apache.spark.ml.linalg.Vector
 import org.apache.spark.sql.types.DoubleType
+import org.apache.spark.ml.evaluation.RegressionEvaluator
+
 
 
 object Main {
   
+  /*
+   * This function extracts all features from a .h5 file (opened with
+   * a HDF5 reader, and returns an array with a string of features,
+   * the first one being the year of the song
+   */
   def getFeatures(reader: IHDF5Reader): Array[String] = {
      val metadata = HDF.getCompoundDS(reader,"/metadata/songs")
      val mb = HDF.getCompoundDS(reader,"/musicbrainz/songs")
      val analysis = HDF.getCompoundDS(reader,"/analysis/songs")
      
+     //println(metadata.get[String]("title"))
      var features: Array[String] = Array(mb.get[Int]("year").toDouble.toString())
      features = features :+ analysis.get[Double]("danceability").toString()
      features = features :+ analysis.get[Double]("duration").toString()
@@ -65,42 +73,81 @@ object Main {
 
     import sqlContext.implicits._
     
-    val path = "/home/mcr222/Documents/EIT/KTH/Scalable Machine Learning/Linear Regressions with SparkML/vt17-lab1/src/main/resources/"
- 
+    //val path = "/demo_spark_marccr01/labs::million_song/"
+    val path = "/home/mcr222/Downloads/"
+    //in order for this to work the file millionsongsubset should be added
+    //to resources or some other path. It will also work for the full
+    //dataset, it is needed to add the path to all 
+    //var path = "src/main/resources/"
+    val f:File = new File(path);
+    if(f.exists()) { 
+        print("Reading files from path: ")
+        println(path)
+    } else {
+      println("Reading path not found")
+      return
+    }
     var tarFiles: Array[String] = Array()
-    val tar_path = path + "song-test.tar.gz"
+    val tar_path = path + "millionsongsubset.tar.gz"
+    
+    //should add here as many tar.gz files as wanted containing the
+    //hdf5 files for the songs
     tarFiles = tarFiles :+ tar_path
+    tarFiles = tarFiles :+ tar_path
+    //tarFiles = tarFiles :+ (path+"A.tar.gz")
+    //tarFiles = tarFiles :+ (path+"B.tar.gz")
+    //tarFiles = tarFiles :+ (path+"C.tar.gz")
+    
+    //This reads all tar.gz files in tarFiles list, and for each .h5
+    //file within, it extracts each song's list of features
+    //Thus, it gets a list of features for all songs in the files.
     var allHDF5 = sc.parallelize(tarFiles).flatMap(path => {
         val tar = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(path)))
         var entry: TarArchiveEntry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
         var res: List[Array[Byte]] = List()
-        while (entry != null) {
+        var i = 0
+        while (entry != null && i<101) {
             var outputFile:File = new File(entry.getName());
             if (!entry.isDirectory() && entry.getName.contains(".h5")) {
                 var byteFile = Array.ofDim[Byte](entry.getSize.toInt)
                 tar.read(byteFile);
                 res = byteFile :: res
+                if(i%100==0) {
+                  println("Read " + i + " files")
+                }
+                i = i+1
+                    
             }
             entry = tar.getNextEntry().asInstanceOf[TarArchiveEntry]
         }
         res
         
       } ).map(bytes => {
-         FileUtils.writeByteArrayToFile(new File(bytes.toString()), bytes)
-         val reader = HDF5Factory.openForReading(bytes.toString())
-         getFeatures(reader)
+        // The toString method for class Object returns a string consisting of the name
+        //of the class of which the object is an instance, the at-sign character `@', and 
+        //the unsigned hexadecimal representation of the hash code of the object.
+        //It should be a UID
+         val name = bytes.toString()
+         FileUtils.writeByteArrayToFile(new File(name), bytes)
+         val reader = HDF5Factory.openForReading(name)
+         val features = getFeatures(reader)
+         reader.close()
+         features
       })
       
-      allHDF5.foreach(x => { x.foreach(y => print(y+" "))
-                            println()})
-                            
+      println("Extracted songs from tar.gz, showing 5 examples")
+      allHDF5.take(5).foreach(x => { x.foreach(y => print(y+" "))
+                           println()})
+      
+      //There are songs that have no year, these we won't use to predict
       var obsDF = allHDF5.filter(x => x(0)!="0.0").toDF()
       obsDF.printSchema()
       println(obsDF.count())
       
-      obsDF.show(3)
+      obsDF.show(10)
     
-      
+      //We use the pipeline, without needing the tokenizer since our results
+      //are in an array already
      val arr2Vect = new Array2Vector()
         .setInputCol("value")
          .setOutputCol("tokens_vector")
@@ -113,11 +160,13 @@ object Main {
      val min_year = 1922
      val lShifter = new DoubleUDF((x:Double) => x-min_year).setInputCol("label").setOutputCol("label_shifted")
      
-     
+     //For testing purposes this is kept in the pipeline, but it can be removed in order
+     //to take into account all features of each song
      val fSlicer = new VectorSlicer().setInputCol("tokens_vector").setOutputCol("features")
-     fSlicer.setIndices(Array(1,2,3))
+     fSlicer.setIndices(Array(1,2,3,4,5))
 
      // Linear regression related transformations ------------------------
+     //We use the optimal parameters found in task 4
     val myLR = new LinearRegression().setElasticNetParam(0.1).setRegParam(1.2).setMaxIter(20)
       .setLabelCol("label_shifted")
       .setFeaturesCol("features")
@@ -143,6 +192,14 @@ object Main {
     //do prediction - print first k
     val result = pipelineModel.transform(test)
     result.drop("value", "tokens", "tokens_vector", "year").show(10)
+    
+    //evaluating on validation data
+    val evaluator = new RegressionEvaluator()
+      .setMetricName("rmse")
+      .setLabelCol("label_shifted")
+      .setPredictionCol("prediction")
+    val rmse = evaluator.evaluate(result)
+    println(s"Root-mean-square error on validation data = $rmse")
   
   }
 }
